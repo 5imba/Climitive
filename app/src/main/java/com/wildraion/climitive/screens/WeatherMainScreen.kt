@@ -68,10 +68,10 @@ fun CurrentBlockView(weatherModel: WeatherModel) {
         color = Color(0xFF88C2F7),
         elevation = 10.dp
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            Row {
+        Column {
+            Row(
+                modifier = Modifier.padding(20.dp)
+            ) {
                 Icon(Icons.Filled.LocationOn,null)
                 Text(
                     text = weatherModel.city.name,
@@ -79,11 +79,22 @@ fun CurrentBlockView(weatherModel: WeatherModel) {
                 )
             }
             Spacer(modifier = Modifier.height(50.dp))
-            Box(
-                contentAlignment = Alignment.Center,
+            Row(
+                horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
+                Column {
+                    Text(
+                        text = Utils.temperatureToPretty(currentWeather.main.temp),
+                        style = MaterialTheme.typography.h3
+                    )
+                    Text(
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        text = currentWeather.weather[0].main,
+                        style = MaterialTheme.typography.h1
+                    )
+                }
                 Image(painter = painterResource(
                     id = context.resources
                         .getIdentifier(
@@ -94,18 +105,9 @@ fun CurrentBlockView(weatherModel: WeatherModel) {
                 ),
                     contentDescription = context.getString(R.string.weather_icon),
                     modifier = Modifier.size(150.dp),
-                    contentScale = ContentScale.FillHeight
-                )
-                Text(
-                    text = Utils.temperatureToPretty(currentWeather.main.temp),
-                    style = MaterialTheme.typography.h3
+                    contentScale = ContentScale.FillWidth
                 )
             }
-            Text(
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                text = currentWeather.weather[0].main,
-                style = MaterialTheme.typography.h1
-            )
             Spacer(modifier = Modifier.height(50.dp))
             LazyRow {
                 weatherModel.list.forEach {
@@ -118,6 +120,7 @@ fun CurrentBlockView(weatherModel: WeatherModel) {
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }

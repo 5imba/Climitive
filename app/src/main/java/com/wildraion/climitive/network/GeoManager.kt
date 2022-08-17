@@ -10,7 +10,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.Priority.PRIORITY_LOW_POWER
+import com.google.android.gms.location.Priority.*
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.wildraion.climitive.R
 import javax.inject.Inject
@@ -33,11 +33,10 @@ class GeoManager @Inject constructor(
             return
         }
 
-        Log.e("TAG", "Start Location")
 
 
         val task = fusedLocationProviderClient.getCurrentLocation(
-            PRIORITY_LOW_POWER,
+            PRIORITY_HIGH_ACCURACY,
             cancellationTokenSource.token
         )
         task.addOnSuccessListener {

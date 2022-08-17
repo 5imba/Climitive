@@ -1,5 +1,6 @@
 package com.wildraion.climitive
 
+import android.location.Location
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,8 +29,15 @@ class MainActivity : ComponentActivity()  {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        geoManager.geoCallbackListener = object : GeoManager.GeoCallbackListener {
+            override fun onSuccessListener(location: Location?) {
+                viewModel.fetchWeatherForecast(location)
+            }
+        }
+        geoManager.fetchLocation(this)
+
         networkConnectionManager.observe(this) { isNetworkAvailable ->
-            viewModel.setNetworkState(isNetworkAvailable, this)
+            viewModel.setNetworkState(isNetworkAvailable)
         }
 
         setContent {
@@ -45,9 +53,9 @@ class MainActivity : ComponentActivity()  {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        viewModel.fetchWeatherForecast(this)
+    override fun onStop() {
+        super.onStop()
+        geoManager.getLocationTaskCancellation()
     }
 }
 

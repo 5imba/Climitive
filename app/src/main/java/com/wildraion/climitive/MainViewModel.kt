@@ -8,7 +8,6 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wildraion.climitive.network.GeoManager
 import com.wildraion.climitive.network.remote.WeatherApi
 import com.wildraion.climitive.network.remote.model.WeatherModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,8 +18,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val weatherApi: WeatherApi,
-    private val geoManager: GeoManager
+    private val weatherApi: WeatherApi
 ) : ViewModel() {
 
     private val _weather = MutableLiveData<WeatherModel>()
@@ -31,41 +29,48 @@ class MainViewModel @Inject constructor(
 
     private var weatherRequestJob: Job? = null
 
-    fun setNetworkState(isNetworkAvailable: Boolean, activity: ComponentActivity) {
-        if (isNetworkAvailable) {
-            if (_state.value != State.Loaded) {
-                fetchWeatherForecast(activity)
-            }
-        } else {
-            _state.postValue(State.Error)
-        }
-    }
+    private var isNetworkAvailable = true
+    fun setNetworkState(isNetworkAvailable: Boolean) {
 
-    fun fetchWeatherForecast(context: ComponentActivity) {
-        fetchLocationAndLoadForecast(context)
-    }
+        if (isNetworkAvailable != this.isNetworkAvailable) {
+            this.isNetworkAvailable = isNetworkAvailable
 
-    private fun fetchLocationAndLoadForecast(activity: ComponentActivity) {
-        geoManager.geoCallbackListener = object : GeoManager.GeoCallbackListener {
-            override fun onSuccessListener(location: Location?) {
-                if (location != null) {
-                    // Get system language and units
-                    val country = Locale.current.language
-                    val units = when(country) {
-                        "us", "lr", "mm" -> "imperial"
-                        else -> "metric"
-                    }
-                    // Request forecast
-                    fetchWeather(
-                        location.latitude.toString(),
-                        location.longitude.toString(),
-                        units,
-                        country
-                    )
+            if (isNetworkAvailable) {
+                if (_state.value != State.Loaded) {
+                    weatherRequestJob?.cancel()
+                    fetchWeatherForecast(null)
                 }
+            } else {
+                _state.postValue(State.Error)
             }
         }
-        geoManager.fetchLocation(activity)
+    }
+
+    fun fetchWeatherForecast(location: Location?) {
+        // Get system language and units
+        val country = Locale.current.language
+        val units = when(country) {
+            "us", "lr", "mm" -> "imperial"
+            else -> "metric"
+        }
+        val lat: String
+        val lon: String
+        if (location != null) {
+            lat = location.latitude.toString()
+            lon = location.longitude.toString()
+        } else {
+            // If no Location use London location
+            lat = "51.51650199277461"
+            lon = "-0.12913951336584356"
+        }
+
+        // Request forecast
+        fetchWeather(
+            lat,
+            lon,
+            units,
+            country
+        )
     }
 
     private fun fetchWeather(
@@ -105,8 +110,6 @@ class MainViewModel @Inject constructor(
 
     override fun onCleared() {
         weatherRequestJob?.cancel()
-        geoManager.getLocationTaskCancellation()
-
         super.onCleared()
     }
 
