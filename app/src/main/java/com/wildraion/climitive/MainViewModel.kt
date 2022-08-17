@@ -8,6 +8,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wildraion.climitive.common.default
+import com.wildraion.climitive.network.GeoManager
+import com.wildraion.climitive.network.NetworkConnectionManager
 import com.wildraion.climitive.network.remote.WeatherApi
 import com.wildraion.climitive.network.remote.model.WeatherModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,40 +19,49 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+sealed class WeatherState {
+    class DefaultState : WeatherState()
+    class LoadingState : WeatherState()
+    class SuccessState : WeatherState()
+    class ErrorState<T>(val message: T) : WeatherState()
+}
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val weatherApi: WeatherApi
+    private val weatherApi: WeatherApi,
+    private val geoManager: GeoManager,
+    private val networkConnectionManager: NetworkConnectionManager
 ) : ViewModel() {
 
     private val _weather = MutableLiveData<WeatherModel>()
     val weatherData: LiveData<WeatherModel> = _weather
 
-    private val _state = MutableLiveData(State.Loading)
-    val state: LiveData<State> = _state
+    private val _state = MutableLiveData<WeatherState>()
+        .default(initialData = WeatherState.DefaultState())
+    val state: LiveData<WeatherState> = _state
 
     private var weatherRequestJob: Job? = null
 
-    private var isNetworkAvailable = true
-    fun setNetworkState(isNetworkAvailable: Boolean) {
-
-        if (isNetworkAvailable != this.isNetworkAvailable) {
-            this.isNetworkAvailable = isNetworkAvailable
-
-            if (isNetworkAvailable) {
-                if (_state.value != State.Loaded) {
-                    weatherRequestJob?.cancel()
-                    fetchWeatherForecast(null)
-                }
-            } else {
-                _state.postValue(State.Error)
+    fun observeNetworkConnection(activity: ComponentActivity) {
+        networkConnectionManager.observe(activity) { isNetworkAvailable: Boolean ->
+            if (isNetworkAvailable && _state.value is WeatherState.ErrorState<*>) {
+                fetchLocation(activity)
+            } else if (!isNetworkAvailable) {
+                onError(message = activity.getString(R.string.no_internet_connection))
             }
         }
     }
 
-    fun fetchWeatherForecast(location: Location?) {
+    fun fetchLocation(activity: ComponentActivity) {
+        geoManager.fetchLocation(activity = activity) { location ->
+            prepareRequest(location = location)
+        }
+    }
+
+    private fun prepareRequest(location: Location?) {
         // Get system language and units
-        val country = Locale.current.language
-        val units = when(country) {
+        val lang = Locale.current.language
+        val units = when(lang) {
             "us", "lr", "mm" -> "imperial"
             else -> "metric"
         }
@@ -64,12 +76,11 @@ class MainViewModel @Inject constructor(
             lon = "-0.12913951336584356"
         }
 
-        // Request forecast
         fetchWeather(
-            lat,
-            lon,
-            units,
-            country
+            lat = lat,
+            lon = lon,
+            units = units,
+            lang = lang
         )
     }
 
@@ -81,20 +92,20 @@ class MainViewModel @Inject constructor(
     ) {
         weatherRequestJob = viewModelScope.launch(Dispatchers.Default) {
             try {
-                _state.postValue(State.Loading)
+                _state.postValue(WeatherState.LoadingState())
 
                 val response = weatherApi.getCurrentWeather(
-                    lat,
-                    lon,
-                    "69804d11c802801608e08fe1f8144146",
-                    units,
-                    lang)
+                    lat = lat,
+                    lon = lon,
+                    appid = "69804d11c802801608e08fe1f8144146",
+                    units = units,
+                    lang = lang)
 
                 if (response.isSuccessful) {
                     _weather.postValue(response.body())
-                    _state.postValue(State.Loaded)
+                    _state.postValue(WeatherState.SuccessState())
                 } else {
-                    onError(response.message())
+                    onError(message = response.message())
                 }
             } catch (e: Exception) {
                 e.localizedMessage?.let { onError(it) }
@@ -105,17 +116,12 @@ class MainViewModel @Inject constructor(
     private fun onError(message: String) {
         Log.e("GetWeatherRequest",
             "Exception during request -> $message")
-        _state.postValue(State.Error)
+        _state.postValue(WeatherState.ErrorState(message = message))
     }
 
     override fun onCleared() {
         weatherRequestJob?.cancel()
+        geoManager.getLocationTaskCancellation()
         super.onCleared()
-    }
-
-    enum class State {
-        Loading,
-        Loaded,
-        Error
     }
 }

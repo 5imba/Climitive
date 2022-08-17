@@ -1,6 +1,7 @@
 package com.wildraion.climitive.screens
 
 import android.annotation.SuppressLint
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,15 +27,28 @@ import com.wildraion.climitive.MainViewModel
 import com.wildraion.climitive.common.Utils
 import com.wildraion.climitive.network.remote.model.WeatherModel
 import com.wildraion.climitive.R
+import com.wildraion.climitive.WeatherState
 
 @Composable
 fun WeatherMainScreen(viewModel: MainViewModel) {
     val weatherModel by viewModel.weatherData.observeAsState()
     val state by viewModel.state.observeAsState()
+    val context = LocalContext.current
 
     when (state) {
-        MainViewModel.State.Loading -> LoadingScreen()
-        MainViewModel.State.Loaded -> WeatherForecastView(weatherModel)
+        is WeatherState.LoadingState -> LoadingScreen()
+        is WeatherState.SuccessState -> WeatherForecastView(weatherModel)
+        is WeatherState.ErrorState<*> -> {
+            NoInternetScreen()
+            val errorState = state as WeatherState.ErrorState<*>
+            when (errorState.message) {
+                is String -> Toast.makeText(
+                    context,
+                    errorState.message,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
         else -> NoInternetScreen()
     }
 }

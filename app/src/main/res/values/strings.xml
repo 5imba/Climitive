@@ -16,5 +16,6 @@
     <string name="minimal">Minimal</string>
     <string name="maximal">Maximal</string>
 
+    <string name="no_internet_connection">No Internet Connection</string>
     <string name="location_permission_message">To display the weather for your current location, please confirm access for the location</string>
 </resources>
