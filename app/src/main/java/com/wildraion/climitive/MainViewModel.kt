@@ -4,7 +4,6 @@ import android.location.Location
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.text.intl.Locale
-import androidx.compose.ui.text.toLowerCase
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -32,12 +31,21 @@ class MainViewModel @Inject constructor(
 
     private var weatherRequestJob: Job? = null
 
+    fun setNetworkState(isNetworkAvailable: Boolean, activity: ComponentActivity) {
+        if (isNetworkAvailable) {
+            if (_state.value != State.Loaded) {
+                fetchWeatherForecast(activity)
+            }
+        } else {
+            _state.postValue(State.Error)
+        }
+    }
+
     fun fetchWeatherForecast(context: ComponentActivity) {
         fetchLocationAndLoadForecast(context)
     }
 
-
-    private fun fetchLocationAndLoadForecast(context: ComponentActivity) {
+    private fun fetchLocationAndLoadForecast(activity: ComponentActivity) {
         geoManager.geoCallbackListener = object : GeoManager.GeoCallbackListener {
             override fun onSuccessListener(location: Location?) {
                 if (location != null) {
@@ -57,7 +65,7 @@ class MainViewModel @Inject constructor(
                 }
             }
         }
-        geoManager.fetchLocation(context)
+        geoManager.fetchLocation(activity)
     }
 
     private fun fetchWeather(
