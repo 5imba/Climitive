@@ -23,14 +23,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.wildraion.climitive.MainViewModel
 import com.wildraion.climitive.common.Utils
 import com.wildraion.climitive.network.remote.model.WeatherModel
 import com.wildraion.climitive.R
 import com.wildraion.climitive.WeatherState
+import com.wildraion.climitive.WeatherViewModel
 
 @Composable
-fun WeatherMainScreen(viewModel: MainViewModel) {
+fun WeatherMainScreen(viewModel: WeatherViewModel) {
     val weatherModel by viewModel.weatherData.observeAsState()
     val state by viewModel.state.observeAsState()
     val context = LocalContext.current

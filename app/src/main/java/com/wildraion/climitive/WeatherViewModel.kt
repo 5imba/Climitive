@@ -27,7 +27,7 @@ sealed class WeatherState {
 }
 
 @HiltViewModel
-class MainViewModel @Inject constructor(
+class WeatherViewModel @Inject constructor(
     private val weatherApi: WeatherApi,
     private val geoManager: GeoManager,
     private val networkConnectionManager: NetworkConnectionManager
@@ -42,19 +42,39 @@ class MainViewModel @Inject constructor(
 
     private var weatherRequestJob: Job? = null
 
-    fun observeNetworkConnection(activity: ComponentActivity) {
+    fun startWeatherLoading(activity: ComponentActivity) {
+        // Network state observer
+        observeNetworkConnection(activity)
+
+        // Get location and send request onSuccess
+        fetchLocation(activity) { location ->
+            prepareRequest(location)
+        }
+    }
+
+    private fun observeNetworkConnection(activity: ComponentActivity) {
         networkConnectionManager.observe(activity) { isNetworkAvailable: Boolean ->
-            if (isNetworkAvailable && _state.value is WeatherState.ErrorState<*>) {
-                fetchLocation(activity)
-            } else if (!isNetworkAvailable) {
-                onError(message = activity.getString(R.string.no_internet_connection))
+            // Only if weather not loaded
+            if (_state.value !is WeatherState.SuccessState) {
+                if (isNetworkAvailable) {
+                    // If network available and weather not loaded start new request
+                    weatherRequestJob?.cancel()
+                    fetchLocation(activity) { location ->
+                        prepareRequest(location)
+                    }
+                } else if (!isNetworkAvailable) {
+                    onError(message = activity.getString(R.string.no_internet_connection))
+                }
             }
         }
     }
 
-    fun fetchLocation(activity: ComponentActivity) {
+    private fun fetchLocation(
+        activity: ComponentActivity,
+        onSuccessCallback: (location: Location?) -> Unit
+    ) {
         geoManager.fetchLocation(activity = activity) { location ->
-            prepareRequest(location = location)
+            onSuccessCallback(location)
         }
     }
 
